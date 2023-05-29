@@ -5,6 +5,8 @@ let cards = [];
 let index = 0;
 let origPos;
 let $multiDrag;
+//let currentSuit = 0;
+//let currentKind = 0;
 
 // pool:   24
 // stacks: 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28
@@ -447,14 +449,61 @@ function checkFinish() {
 }
 
 function finish() {
-    for (var i = 0; i < suits.length; i++) {
-        const $stack = $('#stack' + i);
-        for (var j = 0; j < kinds.length; j++) {
-            const card = kinds[j] + suits[i];
-            const $img = $('[card="' + card + '"]');
-            $img.css('top', '0px');
-            setCard($img, card);
-            $stack.append($img);
+    let cards = [];
+    const $imgs = $('[card]');
+
+    for (var i = 0; i < $imgs.length; i++) {
+        const $img = $($imgs[i]);
+        const id = $img.parent()[0].id;
+
+        if (!id || !id.startsWith('stack')) {
+            let card = $img.attr('card');
+            cards.push(card);
         }
+    }
+
+    animate(cards);
+}
+
+function animate(cards) {
+    var $stack;
+    var idxCard;
+
+    for (var i = 0; i < 4; i++) {
+        let $stk = $('#stack' + i);
+        let $last = $stk.find(":last");
+        let type = getCardType($last);
+
+        if (type) {
+            let idxNext = kinds.indexOf(type.kind) + 1;
+            if (idxNext < kinds.length) {
+                let nextCard = kinds[idxNext] + type.suit;
+                idxCard = cards.indexOf(nextCard);
+                if (idxCard >= 0) {
+                    $stack = $stk;
+                    break;
+                }
+            }
+        }
+    }
+
+    if ($stack) {
+        let card = cards[idxCard];
+        let $img = $('[card="' + card + '"]');
+        cards.splice(idxCard, 1);
+        let pos = $stack.offset();
+        let iPos = $img.offset();
+        let left = pos.left - iPos.left;
+        let top = pos.top - iPos.top + getTop($img);
+        setCard($img, card);
+        $img.css('z-index', 999);
+
+        $img.animate({ top: top, left: left }, 400, function() {
+            $stack.append($img);
+            $img.css('top', 'unset');
+            $img.css('left', 'unset');
+            $img.css('z-index', 'unset');
+            animate(cards);
+        });
     }
 }

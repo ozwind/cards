@@ -1,9 +1,22 @@
 body {
     background-color: dimgray;
+    margin-left: 15%;
+    margin-right: 15%;
 }
 
 #topRow, #botRow {
     display: flex;
+    justify-content: space-between;
+}
+
+#buttons, #author {
+    display: flex;
+    justify-content: flex-start;
+}
+
+#author {
+    margin-left: 12px;
+    font-size: smaller;
 }
 
 #topRow .imgContainer {
