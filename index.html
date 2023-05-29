@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- https://www.favicon.cc/ -->
+    <title>Cards</title>
+    <link rel="stylesheet" href="cards.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- drag/drop -->
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+    <script src="cards.js"></script>
+    <script>
+        $(function() {
+            init();
+        });
+
+    </script>
+</head>
+
+<body>
+    <button id="deal" title="Shuffle and deal the cards">Deal</button>
+    <button id="reset" title="Reset game">&#10227;</button>
+    <button id="finish" title="Complete game">Finish</button>
+    <div id="topRow">
+        <div id="pool">
+        </div>
+        <div id="unpool">
+        </div>
+        <div id="empty">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" id="stack0"></div>
+        <div class="imgContainer" id="stack1"></div>
+        <div class="imgContainer" id="stack2"></div>
+        <div class="imgContainer" id="stack3"></div>
+    </div>
+    <div id="botRow">
+        <div class="imgContainer" idx="0">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" idx="1">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" idx="2">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" idx="3">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" idx="4">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" idx="5">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+        <div class="imgContainer" idx="6">
+            <img class="spacer" src="images/blue_back.jpg">
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,63 @@
+body {
+    background-color: dimgray;
+}
+
+#topRow, #botRow {
+    display: flex;
+}
+
+#topRow .imgContainer {
+    border: 2px solid black;
+}
+
+#botRow .imgContainer, #pool, #unpool, #empty {
+    border: 2px solid transparent;
+}
+
+.imgContainer, #pool, #unpool, #empty {
+    width: 12%;
+    margin: 10px;
+    position: relative;
+}
+
+.imgContainer img, #pool img, #unpool img {
+    width: 100%;
+    position: absolute;
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+button {
+    margin-top: 10px;
+    margin-left: 12px;
+    margin-bottom: 8px;
+    padding: 10px 20px;
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: x-large;
+}
+
+button:hover {
+    background-color: #3e8e41;
+}
+
+.spacer {
+    visibility: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.ui-draggable {
+    cursor: move;
+}
+
+.dragHover {
+    border: 5px solid black;
+    margin-left: -5px;
+    border-radius: 10px;
+}
