@@ -27,6 +27,7 @@ function init() {
     });
 
     $(window).resize(function() {
+        adjustMargins();
         adjustOffsets();
     });
 
@@ -41,6 +42,18 @@ function init() {
     $("#finish").on('click', function() {
         finish();
     });
+
+    adjustMargins();
+}
+
+// Adjust so that cards fit without vertical scrolling
+function adjustMargins() {
+    const $body = $("body");
+    const dWidth = window.innerWidth;
+    const dHeight = window.innerHeight;
+    const margin = dHeight > dWidth ? 0 : 27 * (dWidth - dHeight) / dHeight;
+    $body.css("margin-left", margin + "%");
+    $body.css("margin-right", margin + "%");
 }
 
 function adjustOffsets() {
