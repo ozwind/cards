@@ -5,8 +5,6 @@ let cards = [];
 let index = 0;
 let origPos;
 let $multiDrag;
-//let currentSuit = 0;
-//let currentKind = 0;
 
 // pool:   24
 // stacks: 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28
@@ -51,9 +49,18 @@ function adjustMargins() {
     const $body = $("body");
     const dWidth = window.innerWidth;
     const dHeight = window.innerHeight;
-    const margin = dHeight > dWidth ? 0 : 27 * (dWidth - dHeight) / dHeight;
-    $body.css("margin-left", margin + "%");
-    $body.css("margin-right", margin + "%");
+    let margin = dHeight > dWidth ? 0 : 27 * (dWidth - dHeight) / dHeight;
+    let suffix = "%";
+
+    if (margin > 30) {
+        margin = 30;
+    }
+    else if (margin < 1) {
+        margin = 5;
+        suffix = "px";
+    }
+    $body.css("margin-left", margin + suffix);
+    $body.css("margin-right", margin + suffix);
 }
 
 function adjustOffsets() {
@@ -475,15 +482,26 @@ function finish() {
         }
     }
 
+    var audio = new Audio('sounds/win.mp3');
+    audio.play();
+    $("#finish").hide();
+
     animate(cards);
 }
 
 function animate(cards) {
     var $stack;
     var idxCard;
+    let stacks = [0, 1, 2, 3];
 
-    for (var i = 0; i < 4; i++) {
-        let $stk = $('#stack' + i);
+    // Randomize destination stack to use:
+    for (let i = stacks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [stacks[i], stacks[j]] = [stacks[j], stacks[i]];
+    }
+
+    for (var i = 0; i < stacks.length; i++) {
+        let $stk = $('#stack' + stacks[i]);
         let $last = $stk.find(":last");
         let type = getCardType($last);
 
@@ -511,12 +529,28 @@ function animate(cards) {
         setCard($img, card);
         $img.css('z-index', 999);
 
-        $img.animate({ top: top, left: left }, 400, function() {
-            $stack.append($img);
-            $img.css('top', 'unset');
-            $img.css('left', 'unset');
-            $img.css('z-index', 'unset');
-            animate(cards);
-        });
+        // Move and rotate card
+        $img.animate(
+            { deg:360, top: top, left: left },
+            {
+                duration: 600,
+                step: function(now, fx) {
+                    if (fx.prop === 'deg') {
+                        $img.css({ transform: 'rotate(' + now + 'deg)' });
+                    }
+                    else {
+                        $img.css(fx.prop, now);
+                    }
+                },
+                complete: function() {
+                    $stack.append($img);
+                    $img.css('top', 'unset');
+                    $img.css('left', 'unset');
+                    $img.css('z-index', 'unset');
+                    animate(cards);
+                }
+            }
+        );
     }
 }
+

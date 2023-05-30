@@ -1,9 +1,6 @@
 body {
     background-color: dimgray;
-    /**
-    margin-left: 20%;
-    margin-right: 20%;
-    **/
+    background: #8d836f url(images/background.gif);
 }
 
 #topRow, #botRow {
@@ -26,7 +23,7 @@ body {
 
 .imgContainer, #pool, #unpool, #empty {
     width: 12%;
-    margin: 10px;
+    margin-bottom: 5px;
     position: relative;
 }
 
@@ -35,14 +32,19 @@ body {
     position: absolute;
 }
 
+#topRow img {
+    height: 100%;
+}
+
 .clickable {
     cursor: pointer;
 }
 
 button {
-    margin-top: 5px;
-    margin-left: 12px;
-/*    padding: 10px 20px;  */
+    margin-left: 2px;
+    margin-bottom: 10px;
+    margin-right: 10px;
+    margin-top: 4px;
     padding: 8px 10px;
     background-color: #4caf50;
     color: #fff;
