@@ -2,9 +2,9 @@ const suits = ['C','S','H','D'];  // https://acbl.mybigcommerce.com/52-playing-c
 const kinds = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const BACK = "blue_back";
 let cards = [];
+let undos = [];
 let index = 0;
 let origPos;
-let $multiDrag;
 
 // pool:   24
 // stacks: 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28
@@ -18,7 +18,8 @@ function init() {
         }
     }
 
-    $("#finish").hide();
+    showUndo(false);
+    showFinish(false);
 
     $pool.on('click', function(evt) {
         clickPool(evt);
@@ -39,6 +40,10 @@ function init() {
 
     $("#finish").on('click', function() {
         finish();
+    });
+
+    $("#undo").on('click', function() {
+        undo();
     });
 
     adjustMargins();
@@ -152,7 +157,6 @@ function clearTopDrop() {
 function setCard($sel, card, initEvent) {  // Sets card image
     let src = "images/" + card + ".jpg";
     $sel.attr("src", src);
-    checkFinish();
 
     if (initEvent) {
         $sel.mouseover(function(evt) {
@@ -196,7 +200,6 @@ function mouseover(self) {
                 clearDrag($img);
                 $div.append($img);
             }
-            $multiDrag = $parent;
             $parent.append($div);
             setDraggable($div);
         }
@@ -241,7 +244,7 @@ function shuffle() {
     for (var i = 0; i < $bots.length; i++) {
         let $bot = $($bots[i]);
         let len = i + 1;
-        $bot.find("img:not(.spacer)").remove();
+        $bot.find("img:not(.holder)").remove();
         for (var j = 0; j < len; j++) {
             const card = cards[index++];
             let showBack = j < (len - 1);
@@ -421,56 +424,122 @@ function getCardType($img) {
 }
 
 function deal() {
-    $("#finish").hide();
+    showUndo(false);
+    showFinish(false);
     shuffle();
+    undos = [];
 
     for (var i = 0; i < 4; i++) {
         $("#stack" + i).empty();
     }
 }
 
-function dropProcess(ui) {    
-    ui.draggable.css('z-index', 'unset');
+function dropProcess(ui, $dest) {    
+    ui.draggable.css('z-index', 'unset');     // ui.draggable is source img
     ui.draggable.css('left', 'unset');
     ui.draggable.css('top', 'unset');
-    const $prev = ui.draggable.prev();
-    if ($prev.length > 0 && !$prev.hasClass('spacer')) {
+    const $prev = ui.draggable.prev();        // $prev is the img just before source img
+    let prevBack = false;
+
+    if ($prev.length > 0 && !$prev.hasClass('holder')) {
+        prevBack = $prev[0].src && $prev[0].src.includes(BACK);
         const card = getCard($prev);
         setCard($prev, card);
-        setDraggable($prev);
+        setDraggable($prev);                  // make the previous img draggable
     }
+
+    // Handle undo:
+    let cards = [];
+    let card = getCard(ui.draggable);
+    if (card) {
+        cards.push(card);
+    }
+    else {
+        const $imgs = ui.draggable.find('img');
+        for (var i = 0; i < $imgs.length; i++) {
+            card = getCard($($imgs[i]));
+            cards.push(card);
+        }
+    }    
+    undos.push({cards, prevBack, src: ui.draggable.parent()});
+
+    $dest.append(ui.draggable);               // move ui.draggable to destination imgContainer
+    checkButtons();                           // determine visible state of buttons
 }
 
 function dropTop(event, ui) {
-    const $target = $(event.target);
-    dropProcess(ui);
-    $target.append(ui.draggable);
+    const $target = $(event.target);          // $target is one of the 4 stacks
+    dropProcess(ui, $target);                 // ui.draggable is source img
     $target.css('top', '0px');
 }
 
 function dropBot(event, ui) {
-    const $target = $(event.target).parent();
-    dropProcess(ui);
-    $target.append(ui.draggable);
-    multiDragDone($(event.target));
-    adjustOffsets();
+    const $target = $(event.target);           // $target is destination img
+    const $parent = $target.parent();          // $parent is the destination imgContainer
+    dropProcess(ui, $parent);                  // ui.draggable is source img
+    multiDragDone($target);                    // prevents drag/drop, until the next mouseover
+    adjustOffsets();                           // neatly stack cards in the 7 columns
 }
 
-function checkFinish() {
-    const $cards = $('[card]');
+function showButton(id, show) {
+    const $button = $('#' + id);
+
+    if (show) {
+        $button.removeClass('hidden');
+    }
+    else {
+        $button.addClass('hidden');
+    }
+}
+
+function showUndo(show) {
+    showButton('undo', show);
+}
+
+function showFinish(show) {
+    showButton('finish', show);
+}
+
+function checkButtons() {
+    const $cards = $('#botRow [card]');
+    let show = true;
 
     for (var i = 0; i < $cards.length; i++) {
         if ($cards[i].src.includes(BACK)) {
-            return;
+            show = false;
+            break;
         }
     }
 
-    $("#finish").show();
+    showFinish(show);
+    showUndo(!show && undos.length > 0);
+}
+
+function undo() {
+    let entry = undos.pop();
+    let cards = entry.cards;
+    let $src = entry.src;
+
+    if (entry.prevBack) {
+        let $last = $src.find(":last");
+        setCard($last, BACK);
+    }
+
+    for (var i = 0; i < cards.length; i++) {
+        let $card = $('[card="' + cards[i] + '"]');
+        $src.append($card);
+
+        $card.css('top', '0px');
+    }
+
+    adjustOffsets();
+    checkButtons();
 }
 
 function finish() {
     let cards = [];
     const $imgs = $('[card]');
+    showFinish(false);
 
     for (var i = 0; i < $imgs.length; i++) {
         const $img = $($imgs[i]);
@@ -484,7 +553,6 @@ function finish() {
 
     var audio = new Audio('sounds/win.mp3');
     audio.play();
-    $("#finish").hide();
 
     animate(cards);
 }

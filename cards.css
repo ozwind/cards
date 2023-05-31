@@ -8,9 +8,15 @@ body {
     justify-content: space-between;
 }
 
-#buttons {
+#header {
     display: flex;
     justify-content: flex-start;
+}
+
+#info {
+    margin-left: auto;
+    margin-top: 4px;
+    opacity: 0.5;
 }
 
 #topRow .imgContainer {
@@ -64,6 +70,10 @@ button:hover {
     width: 100%;
 }
 
+.holder {
+    opacity: 0.1;
+}
+
 .ui-draggable {
     cursor: move;
 }
@@ -72,4 +82,8 @@ button:hover {
     border: 5px solid black;
     margin-left: -5px;
     border-radius: 10px;
+}
+
+.hidden {
+    display: none;
 }
