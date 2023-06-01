@@ -10,8 +10,6 @@ let origPos;
 // stacks: 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28
 
 function init() {
-    const $pool = $("#pool");
-
     for (idxKind in kinds) {
         for (idxSuit in suits) {
             cards.push(kinds[idxKind] + suits[idxSuit]);
@@ -20,14 +18,20 @@ function init() {
 
     showUndo(false);
     showFinish(false);
+    showRemaining();
 
-    $pool.on('click', function(evt) {
-        clickPool(evt);
+    $("#pool").on('click', function(evt) {
+        clickPool();
+    });
+
+    $("#remain").on('click', function(evt) {
+        clickPool();
     });
 
     $(window).resize(function() {
         adjustMargins();
         adjustOffsets();
+        showRemaining();
     });
 
     $("#deal").on('click', function() {
@@ -164,6 +168,41 @@ function setCard($sel, card, initEvent) {  // Sets card image
                 mouseover(this);
             }
         });
+
+        $sel.on('dblclick', function(evt) {
+            doubleClick(this);
+        });
+    }
+}
+
+function doubleClick(self) {
+    let $this = $(self);
+
+    if (!showingBack(self) && $this.closest('#multiDrag').length < 1) {
+        let card = getCardType($this);
+        let $moveTo = undefined;
+
+        for (var i = 0; i < 4; i++) {
+            const $stack = $("#stack" + i);
+            const $last = $stack.find(":last");
+            const topCard = getCardType($last);
+
+            if (topCard) {
+                if (card.suit === topCard.suit && card.val == (topCard.val + 1)) {
+                    $moveTo = $stack;  // legal move
+                    break;
+                }
+            }
+            else if ('A' === card.kind) {
+                $moveTo = $stack;       // legal move
+                break;
+            }
+        }
+
+        if ($moveTo) {
+            dropProcess($this, $moveTo);
+            checkButtons();
+        }
     }
 }
 
@@ -178,7 +217,7 @@ function getTop($elem) {
 function mouseover(self) {
     let $this = $(self);
     multiDragDone($this);
-    if (!self.src.includes(BACK)) {
+    if (!showingBack(self)) {
         let $topRow = $this.closest("#topRow");
         let $parent = $this.parent();
         let $all = $this.nextAll();
@@ -219,7 +258,7 @@ function resetPool() {
     index = 0;
     let max = 24;
     let $pool = $('#pool');
-    $pool.empty();
+    $('#pool img:not(:first)').remove();
     while (index < max) {
         const card = cards[index++];
         const $img = $("<img>");
@@ -231,11 +270,15 @@ function resetPool() {
     $('#unpool').empty();
 }
 
-function shuffle() {
-    for (let i = cards.length - 1; i > 0; i--) {
+function randomize(array) {
+    for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [cards[i], cards[j]] = [cards[j], cards[i]];
-    }
+        [array[i], array[j]] = [array[j], array[i]];
+    }    
+}
+
+function shuffle() {
+    randomize(cards);
 
     resetPool();
 
@@ -260,16 +303,16 @@ function shuffle() {
     $('#pool').addClass('clickable');
 }
 
-function clickPool(evt) {
+function clickPool() {
     const $pool = $("#pool");
     const $unpool = $('#unpool');
 
     if ($pool.hasClass('clickable')) {
-        const $target = $(evt.target);
+        const $target = $pool.find(':last-child');
         const len = $pool.children().length;
         const card = getCard($target);
 
-        if (len > 0) {
+        if (len > 0 && !$target.hasClass('holder')) {
             $unpool.append($target);
             setCard($target, card);
             setDraggable($target);
@@ -285,20 +328,8 @@ function clickPool(evt) {
         else {
             $pool.removeClass('clickable');
         }
-    }
-}
 
-function clickUnpool() {
-    const $unpool = $("#unpool");
-    if ($unpool.parent().hasClass('clickable')) {
-        while (unpool.length > 0) {
-            const card = unpool.pop();
-            pool.push(card);
-        }
-        $unpool.parent().removeClass('clickable');
-        $unpool.parent().addClass('empty');
-        $unpool.removeAttr('src');
-        setPool(true);
+        showRemaining();
     }
 }
 
@@ -306,7 +337,7 @@ function clickUnpool() {
 function setDraggable($img) {
     $img.draggable({
         start: function() {
-            if ("multiDrag" == this.id || (this.src && !this.src.includes(BACK))) {
+            if ("multiDrag" == this.id || !showingBack(this)) {
                 $(this).css("z-index", 9999);
                 origPos = $(this).position();                
             }
@@ -325,7 +356,7 @@ function setDraggable($img) {
 }
 
 function setDroppables($img) {
-    if ($img[0].src && $img[0].src.includes(BACK)) {
+    if (showingBack($img[0])) {
         return;
     }
 
@@ -427,6 +458,7 @@ function deal() {
     showUndo(false);
     showFinish(false);
     shuffle();
+    showRemaining();
     undos = [];
 
     for (var i = 0; i < 4; i++) {
@@ -434,51 +466,76 @@ function deal() {
     }
 }
 
-function dropProcess(ui, $dest) {    
-    ui.draggable.css('z-index', 'unset');     // ui.draggable is source img
-    ui.draggable.css('left', 'unset');
-    ui.draggable.css('top', 'unset');
-    const $prev = ui.draggable.prev();        // $prev is the img just before source img
+function showRemaining() {
+    const count = $('#pool img:not(:first)').length;
+    const $remain = $('#remain');
+    let text = "";
+
+    if (count == 1) {
+        text = "1 card";
+    }
+    else if (count > 1) {
+        text = count + " cards";
+    }
+    $remain.text(text);
+
+    const $pool = $('#pool');
+    const offset = $pool.offset();
+    const textWidth = $remain[0].offsetWidth;
+    const poolWidth = $pool.width();
+    const poolHeight = $pool.height();
+    const xPos = offset.left + (poolWidth - textWidth) / 2;
+    const yPos = offset.top - 6 + poolHeight / 2;
+
+    $remain.css('left', xPos);
+    $remain.css('top', yPos);
+}
+
+function dropProcess($src, $dest) {
+    $src.css('z-index', 'unset');     // source img
+    $src.css('left', 'unset');
+    $src.css('top', 'unset');
+    const $prev = $src.prev();        // $prev is the img just before source img
     let prevBack = false;
 
     if ($prev.length > 0 && !$prev.hasClass('holder')) {
-        prevBack = $prev[0].src && $prev[0].src.includes(BACK);
+        prevBack = showingBack($prev[0]);
         const card = getCard($prev);
         setCard($prev, card);
-        setDraggable($prev);                  // make the previous img draggable
+        setDraggable($prev);           // make the previous img draggable
     }
 
     // Handle undo:
     let cards = [];
-    let card = getCard(ui.draggable);
+    let card = getCard($src);
     if (card) {
         cards.push(card);
     }
     else {
-        const $imgs = ui.draggable.find('img');
+        const $imgs = $src.find('img');
         for (var i = 0; i < $imgs.length; i++) {
             card = getCard($($imgs[i]));
             cards.push(card);
         }
     }    
-    undos.push({cards, prevBack, src: ui.draggable.parent()});
+    undos.push({cards, prevBack, src: $src.parent()});
 
-    $dest.append(ui.draggable);               // move ui.draggable to destination imgContainer
-    checkButtons();                           // determine visible state of buttons
+    $dest.append($src);                 // move ui.draggable to destination imgContainer
+    checkButtons();                     // determine visible state of buttons
 }
 
 function dropTop(event, ui) {
-    const $target = $(event.target);          // $target is one of the 4 stacks
-    dropProcess(ui, $target);                 // ui.draggable is source img
+    const $target = $(event.target);    // $target is one of the 4 stacks
+    dropProcess(ui.draggable, $target); // ui.draggable is source img
     $target.css('top', '0px');
 }
 
 function dropBot(event, ui) {
-    const $target = $(event.target);           // $target is destination img
-    const $parent = $target.parent();          // $parent is the destination imgContainer
-    dropProcess(ui, $parent);                  // ui.draggable is source img
-    multiDragDone($target);                    // prevents drag/drop, until the next mouseover
-    adjustOffsets();                           // neatly stack cards in the 7 columns
+    const $target = $(event.target);    // $target is destination img
+    const $parent = $target.parent();   // $parent is the destination imgContainer
+    dropProcess(ui.draggable, $parent); // ui.draggable is source img
+    multiDragDone($target);             // prevents drag/drop, until the next mouseover
+    adjustOffsets();                    // neatly stack cards in the 7 columns
 }
 
 function showButton(id, show) {
@@ -505,7 +562,7 @@ function checkButtons() {
     let show = true;
 
     for (var i = 0; i < $cards.length; i++) {
-        if ($cards[i].src.includes(BACK)) {
+        if (showingBack($cards[i])) {
             show = false;
             break;
         }
@@ -513,6 +570,11 @@ function checkButtons() {
 
     showFinish(show);
     showUndo(!show && undos.length > 0);
+    showRemaining();
+}
+
+function showingBack(elem) {
+    return elem.src && elem.src.includes(BACK);
 }
 
 function undo() {
@@ -551,7 +613,8 @@ function finish() {
         }
     }
 
-    var audio = new Audio('sounds/win.mp3');
+    let idx = Math.floor(Math.random() * 4);  // Play a random audio clip
+    var audio = new Audio('sounds/win' + idx + '.mp3');
     audio.play();
 
     animate(cards);
@@ -562,11 +625,7 @@ function animate(cards) {
     var idxCard;
     let stacks = [0, 1, 2, 3];
 
-    // Randomize destination stack to use:
-    for (let i = stacks.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [stacks[i], stacks[j]] = [stacks[j], stacks[i]];
-    }
+    randomize(stacks);
 
     for (var i = 0; i < stacks.length; i++) {
         let $stk = $('#stack' + stacks[i]);
@@ -615,6 +674,7 @@ function animate(cards) {
                     $img.css('top', 'unset');
                     $img.css('left', 'unset');
                     $img.css('z-index', 'unset');
+                    showRemaining();
                     animate(cards);
                 }
             }

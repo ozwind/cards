@@ -87,3 +87,7 @@ button:hover {
 .hidden {
     display: none;
 }
+
+#remain {
+    position: absolute;
+}
