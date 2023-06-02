@@ -287,6 +287,7 @@ function shuffle() {
     for (var i = 0; i < $bots.length; i++) {
         let $bot = $($bots[i]);
         let len = i + 1;
+        $bot.find(" :first-child").attr("title", "King goes here");
         $bot.find("img:not(.holder)").remove();
         for (var j = 0; j < len; j++) {
             const card = cards[index++];
@@ -462,7 +463,9 @@ function deal() {
     undos = [];
 
     for (var i = 0; i < 4; i++) {
-        $("#stack" + i).empty();
+        let stack = "#stack" + i;
+        $(stack + " :not(:first)").remove();
+        $(stack + " :first-child").attr("title", "Ace goes here");
     }
 }
 
