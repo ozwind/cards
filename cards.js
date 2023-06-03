@@ -601,6 +601,30 @@ function undo() {
     checkButtons();
 }
 
+// The random number returned favors higher numbers
+function getRandomNumber(size) {
+    let retVal = 0;
+    let weights = [];
+
+    for (var i = 1; i <= size; i++) {
+        weights.push(i);
+    }
+
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const randomValue = Math.random() * totalWeight;
+    let cumulativeWeight = 0;
+
+    for (let i = 0; i < weights.length; i++) {
+        cumulativeWeight += weights[i];
+        if (randomValue < cumulativeWeight) {
+            retVal = i;
+            break;
+        }
+    }
+
+    return retVal;
+}
+
 function finish() {
     let cards = [];
     const $imgs = $('[card]');
@@ -616,7 +640,8 @@ function finish() {
         }
     }
 
-    let idx = Math.floor(Math.random() * 4);  // Play a random audio clip
+    // Play a random audio clip
+    let idx = getRandomNumber(5);
     var audio = new Audio('sounds/win' + idx + '.mp3');
     audio.play();
 
