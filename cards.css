@@ -1,6 +1,7 @@
 body {
     background-color: dimgray;
     background: url(images/background.gif);
+    background-size: 100%;
 }
 
 #topRow, #botRow {

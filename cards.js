@@ -74,8 +74,10 @@ function selectBackground(idx) {
         'https://photos.smugmug.com/photos/i-ZxLZzWD/0/X3/i-ZxLZzWD-X3.jpg'
     ];
     const bkgd = (idx >=0 && idx < bkgds.length) ? bkgds[idx] : 0;
+    const $body = $("body");
 
-    $("body").css("background", "url(" + bkgd + ")");
+    $body.css("background", "url(" + bkgd + ")");
+    $body.css("background-size", "100%");
 }
 
 function showOptionsDialog() {
