@@ -1,6 +1,8 @@
 const suits = ['C','S','H','D'];  // https://acbl.mybigcommerce.com/52-playing-cards/
 const kinds = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const BACK = "blue_back";
+const BG_STORE = "userBG";
+let currentBG = 0;
 let cards = [];
 let undos = [];
 let index = 0;
@@ -42,6 +44,10 @@ function init() {
         location.reload();
     });
 
+    $("#settings").on('click', function() {
+        showOptionsDialog();
+    });
+
     $("#finish").on('click', function() {
         finish();
     });
@@ -50,7 +56,62 @@ function init() {
         undo();
     });
 
+    $("#bkgdOptions input").change(function(evt) {
+        const idx = Number($(this).attr("value"));
+        selectBackground(idx);
+    });
+
+    initOptions();
     adjustMargins();
+}
+
+function selectBackground(idx) {
+    const bkgds = [
+        'images/background.gif',
+        'https://photos.smugmug.com/photos/i-FFrGCwk/1/X3/i-FFrGCwk-X3.jpg',
+        'https://photos.smugmug.com/photos/i-S7cwsn6/1/X3/i-S7cwsn6-X3.jpg',
+        'https://photos.smugmug.com/photos/i-GDzDxLm/1/X3/i-GDzDxLm-X3.jpg',
+        'https://photos.smugmug.com/photos/i-ZxLZzWD/0/X3/i-ZxLZzWD-X3.jpg'
+    ];
+    const bkgd = (idx >=0 && idx < bkgds.length) ? bkgds[idx] : 0;
+
+    $("body").css("background", "url(" + bkgd + ")");
+}
+
+function showOptionsDialog() {
+    const $inputs = $('#bkgdOptions input');
+
+    $($inputs[currentBG]).prop("checked", true);
+    showDlgOptions(true);
+    $('#dlgOptions').dialog('open');    
+}
+
+function initOptions() {
+    const $inputs = $('#bkgdOptions input');
+    const usrBG = Number(localStorage.getItem(BG_STORE));
+
+    currentBG = (usrBG >= 0 && usrBG < $inputs.length) ? usrBG : 0;
+    selectBackground(currentBG);
+    showDlgOptions(false);
+    $($inputs[currentBG]).prop("checked", true);
+
+    $('#dlgOptions').dialog({
+        autoOpen: false, // Dialog won't open automatically on page load
+        modal: true, // Enable modal behavior
+        buttons: {
+            Ok: function() {
+                currentBG = Number($("#bkgdOptions input:checked").val());
+                localStorage.setItem(BG_STORE, currentBG);
+                showDlgOptions(false);
+                $(this).dialog('close');
+            },
+            Cancel: function() {
+                selectBackground(currentBG);
+                showDlgOptions(false);
+                $(this).dialog('close');
+            }
+        }
+    });
 }
 
 // Adjust so that cards fit without vertical scrolling
@@ -541,7 +602,7 @@ function dropBot(event, ui) {
     adjustOffsets();                    // neatly stack cards in the 7 columns
 }
 
-function showButton(id, show) {
+function showElem(id, show) {
     const $button = $('#' + id);
 
     if (show) {
@@ -553,11 +614,15 @@ function showButton(id, show) {
 }
 
 function showUndo(show) {
-    showButton('undo', show);
+    showElem('undo', show);
 }
 
 function showFinish(show) {
-    showButton('finish', show);
+    showElem('finish', show);
+}
+
+function showDlgOptions(show) {
+    showElem('dlgOptions', show)
 }
 
 function checkButtons() {
@@ -641,11 +706,30 @@ function finish() {
     }
 
     // Play a random audio clip
-    let idx = getRandomNumber(5);
+    let idx = getRandomNumber(6);
+
     var audio = new Audio('sounds/win' + idx + '.mp3');
     audio.play();
 
     animate(cards);
+}
+
+function nextSuit() {
+    let availSuits = Array.from(suits);
+
+    for (var i = 0; i < 4; i++) {
+        let $stack = $('#stack' + i);
+        let $last = $stack.find(":last");
+        let type = getCardType($last);
+        if (type) {
+            let idx = availSuits.indexOf(type.suit);
+            availSuits.splice(idx, 1);
+        }
+    }
+
+    if (availSuits.length > 0) {
+        return availSuits[0];
+    }
 }
 
 function animate(cards) {
@@ -659,16 +743,15 @@ function animate(cards) {
         let $stk = $('#stack' + stacks[i]);
         let $last = $stk.find(":last");
         let type = getCardType($last);
+        let idxNext = type ? kinds.indexOf(type.kind) + 1 : 0;
+        let suit = type ? type.suit : nextSuit();
 
-        if (type) {
-            let idxNext = kinds.indexOf(type.kind) + 1;
-            if (idxNext < kinds.length) {
-                let nextCard = kinds[idxNext] + type.suit;
-                idxCard = cards.indexOf(nextCard);
-                if (idxCard >= 0) {
-                    $stack = $stk;
-                    break;
-                }
+        if (suit && idxNext < kinds.length) {
+            let nextCard = kinds[idxNext] + suit;
+            idxCard = cards.indexOf(nextCard);
+            if (idxCard >= 0) {
+                $stack = $stk;
+                break;
             }
         }
     }
