@@ -1,12 +1,15 @@
 const suits = ['C','S','H','D'];  // https://acbl.mybigcommerce.com/52-playing-cards/
 const kinds = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-const BACK = "blue_back";
+const margins = ['Auto','0%','5%','10%','15%','20%','25%','30%'];
 const BG_STORE = "userBG";
+const DECK_STORE = "userDeck";
 const WINS_STORE = "userWins";
+const MARGIN_STORE = "userMargin";
+let currentDeck = 0;
 let currentBG = 0;
+let currentMargin = 0;
 let cards = [];
 let undos = [];
-let index = 0;
 var clickTimer;
 let origPos;
 
@@ -96,8 +99,8 @@ function showWins() {
     $("#winsVal").text(wins);
 }
 
-function showBackground(i) {
-    const idx = (i || (i >= 0 && i < backgrounds.length)) ? i : currentBG;
+function showBackground(index) {
+    const idx = (index || (index >= 0 && index < backgrounds.length)) ? index : currentBG;
     const $body = $("body");
     const bkgdSize = window.innerWidth + "px " + window.innerHeight + "px";
 
@@ -105,8 +108,23 @@ function showBackground(i) {
     $body.css("background-size", bkgdSize);
 }
 
+function showDeck(index) {
+    const idx = (index || (index >= 0 && index < decks.length)) ? index : currentDeck;
+    const $cards = $('[card]');
+
+    for (var i = 0; i < $cards.length; i++) {
+        const $card = $($cards[i]);
+        let src = $card.attr("src");
+        if (src.endsWith("_back.jpg")) {
+            setCard($card, decks[idx].image);
+        }
+    }
+}
+
 function showOptionsDialog() {
     $('#bgSel option:eq(' + currentBG + ')').prop('selected', true)
+    $('#deckSel option:eq(' + currentDeck + ')').prop('selected', true)
+    $('#marginSel option:eq(' + currentMargin + ')').prop('selected', true)
     showDlgOptions(true);
     $('#dlgOptions').dialog('open');
 }
@@ -114,14 +132,21 @@ function showOptionsDialog() {
 function initOptions() {
     const $dlg = $('#dlgOptions');
     const usrBG = Number(localStorage.getItem(BG_STORE));
+    const usrDeck = Number(localStorage.getItem(DECK_STORE));
+    const usrMargin = Number(localStorage.getItem(MARGIN_STORE));
+    var $div;
+    var $lbl;
+    var $sel;
 
     currentBG = (usrBG >= 0 && usrBG < backgrounds.length) ? usrBG : 0;
+    currentDeck = (usrDeck >= 0 && usrDeck < decks.length) ? usrDeck : 0;
+    currentMargin = (usrMargin >= 0 && usrMargin < margins.length) ? usrMargin : 0;
     showBackground();
     showDlgOptions(false);
 
     // Init background choices picklist
-    $div = $('<div id="bgDiv"></div>');
-    $lbl = $('<div id="bgLbl">Background:</div>');
+    $div = $('<div class="dlgRow"></div>');
+    $lbl = $('<div>Background:</div>');
     $sel = $('<select id="bgSel">');
     for (var i = 0; i < backgrounds.length; i++) {
         let bg = backgrounds[i];
@@ -138,6 +163,45 @@ function initOptions() {
         showBackground(Number($(this).val()));
     });
 
+    // Init deck choices
+    $div = $('<div class="dlgRow"></div>');
+    $lbl = $('<div>Deck style:</div>');
+    $sel = $('<select id="deckSel">');
+    for (var i = 0; i < decks.length; i++) {
+        let deck = decks[i];
+        let $option = $('<option value="' + i + '">' + deck.name + '</option>');
+        $sel.append($option);
+        if (i == currentDeck) {
+            $option.prop('selected', true);
+        }
+    }
+    $div.append($lbl);
+    $div.append($sel);
+    $dlg.append($div);
+    $sel.change(function() {
+        showDeck(Number($(this).val()));
+    });    
+
+    // Init margin choices
+    $div = $('<div class="dlgRow"></div>');
+    $lbl = $('<div>Side margins:</div>');
+    $sel = $('<select id="marginSel">');
+    for (var i = 0; i < margins.length; i++) {
+        let margin = margins[i];
+        let $option = $('<option value="' + i + '">' + margin + '</option>');
+        $sel.append($option);
+        if (i == currentMargin) {
+            $option.prop('selected', true);
+        }
+    }
+    $div.append($lbl);
+    $div.append($sel);
+    $dlg.append($div);
+    $sel.change(function() {
+        adjustMargins(Number($(this).val()));
+        $dlg.dialog("option", "position", { my: "center", at: "center", of: window });
+    });
+
     $dlg.dialog({
         autoOpen: false, // Dialog won't open automatically on page load
         modal: true, // Enable modal behavior
@@ -145,11 +209,17 @@ function initOptions() {
             Ok: function() {
                 currentBG = Number($('#bgSel option:selected').val());
                 localStorage.setItem(BG_STORE, currentBG);
+                currentDeck = Number($('#deckSel option:selected').val());
+                localStorage.setItem(DECK_STORE, currentDeck);
+                currentMargin = Number($('#marginSel option:selected').val());
+                localStorage.setItem(MARGIN_STORE, currentMargin);
                 showDlgOptions(false);
                 $(this).dialog('close');
             },
             Cancel: function() {
                 showBackground();
+                showDeck();
+                adjustMargins();
                 showDlgOptions(false);
                 $(this).dialog('close');
             }
@@ -158,22 +228,33 @@ function initOptions() {
 }
 
 // Adjust so that cards fit without vertical scrolling
-function adjustMargins() {
+function adjustMargins(index) {
+    const idx = (index || (index >= 0 && index < margins.length)) ? index : currentMargin;
     const $body = $("body");
-    const dWidth = window.innerWidth;
-    const dHeight = window.innerHeight;
-    let margin = dHeight > dWidth ? 0 : 27 * (dWidth - dHeight) / dHeight;
+    var margin;
     let suffix = "%";
 
-    if (margin > 30) {
-        margin = 30;
+    if (idx == 0) {     // auto
+        const dWidth = window.innerWidth;
+        const dHeight = window.innerHeight;
+        margin = dHeight > dWidth ? 0 : 27 * (dWidth - dHeight) / dHeight;
+        if (margin > 30) {
+            margin = 30;
+        }
     }
-    else if (margin < 1) {
+    else {
+        margin = margins[idx].slice(0, -1);  // removes last character %
+    }
+
+    if (margin < 1) {
         margin = 5;
         suffix = "px";
     }
+
     $body.css("margin-left", margin + suffix);
     $body.css("margin-right", margin + suffix);
+    adjustOffsets();
+    showRemaining();
 }
 
 function adjustOffsets() {
@@ -359,7 +440,7 @@ function multiDragDone($this) {
 }
 
 function resetPool() {
-    index = 0;
+    let index = 0;
     let max = 24;
     let $pool = $('#pool');
     $('#pool img:not(:first)').remove();
@@ -368,10 +449,12 @@ function resetPool() {
         const $img = $("<img>");
         $pool.append($img);
         $img.attr("card", card);
-        setCard($img, BACK, true);
+        setCard($img, decks[currentDeck].image, true);
     }
 
     $('#unpool').empty();
+
+    return index;
 }
 
 function randomize(array) {
@@ -384,7 +467,7 @@ function randomize(array) {
 function shuffle() {
     randomize(cards);
 
-    resetPool();
+    let index = resetPool();
 
     let $bots = $('#botRow .imgContainer');
 
@@ -399,7 +482,7 @@ function shuffle() {
             let $img = $("<img>");
             $bot.append($img);
             $img.attr("card", card);
-            setCard($img, showBack ? BACK : card, true);
+            setCard($img, showBack ? decks[currentDeck].image : card, true);
         }
     }
 
@@ -427,7 +510,7 @@ function clickPool() {
             for (var i = $images.length - 1; i >= 0; i--) {
                 const $img = $($images[i]);
                 $pool.append($img);
-                setCard($img, BACK);
+                setCard($img, decks[currentDeck].image);
             }
         }
         else {
@@ -443,7 +526,7 @@ function clickUnpool() {
 
     if ($last.length > 0) {
         clearDrag($last);
-        setCard($last, BACK);
+        setCard($last, decks[currentDeck].image);
         $last.addClass('clickable');
         $("#pool").append($last);
         showRemaining();
@@ -604,7 +687,7 @@ function showRemaining() {
     const poolWidth = $pool.width();
     const poolHeight = $pool.height();
     const xPos = offset.left + (poolWidth - textWidth) / 2;
-    const yPos = offset.top - 6 + poolHeight / 2;
+    const yPos = offset.top - 9 + poolHeight / 2;
 
     $remain.css('left', xPos);
     $remain.css('top', yPos);
@@ -697,7 +780,7 @@ function checkButtons() {
 }
 
 function showingBack(elem) {
-    return elem.src && elem.src.includes(BACK);
+    return elem.src && elem.src.includes(decks[currentDeck].image);
 }
 
 function undo() {
@@ -707,7 +790,7 @@ function undo() {
 
     if (entry.prevBack) {
         let $last = $src.find(":last");
-        setCard($last, BACK);
+        setCard($last, decks[currentDeck].image);
     }
 
     for (var i = 0; i < cards.length; i++) {

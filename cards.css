@@ -118,8 +118,9 @@ button:hover {
     margin-right: 10px;
 }
 
-#bgDiv {
+.dlgRow {
     display: flex;
+    margin-bottom: 10px;
 }
 
 #dlgOptions select {
