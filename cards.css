@@ -1,7 +1,5 @@
 body {
     background-color: dimgray;
-    background: url(images/background.gif);
-    background-size: 100%;
 }
 
 #topRow, #botRow {
@@ -15,9 +13,25 @@ body {
 }
 
 #info {
+    opacity: 0.5;
+}
+
+#topRight {
+    display: flex;
     margin-left: auto;
     margin-top: 4px;
-    opacity: 0.5;
+    background-color: slategrey;
+    opacity: 0.8;
+    margin-bottom: 30px;
+}
+
+#winsLbl, #info {
+    padding: 5px;
+}
+
+#winsVal {
+    margin-right: 20px;
+    padding-top: 5px;
 }
 
 .imgContainer, #pool, #unpool, #empty {
@@ -102,4 +116,13 @@ button:hover {
 
 #bkgdOptions input {
     margin-right: 10px;
+}
+
+#bgDiv {
+    display: flex;
+}
+
+#dlgOptions select {
+    font-size: x-large;
+    margin-left: auto;
 }

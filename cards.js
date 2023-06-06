@@ -2,10 +2,12 @@ const suits = ['C','S','H','D'];  // https://acbl.mybigcommerce.com/52-playing-c
 const kinds = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const BACK = "blue_back";
 const BG_STORE = "userBG";
+const WINS_STORE = "userWins";
 let currentBG = 0;
 let cards = [];
 let undos = [];
 let index = 0;
+var clickTimer;
 let origPos;
 
 // pool:   24
@@ -26,14 +28,25 @@ function init() {
         clickPool();
     });
 
+    $("#unpool").on('click', function(evt) {
+        if (clickTimer) {
+            clearTimeout(clickTimer);  // this is double click
+            clickTimer = null;
+        }
+        else {
+            clickTimer = setTimeout(function() {
+                clickTimer = null;     // this is single click
+                clickUnpool();
+            }, 400);
+        }
+    });
+
     $("#remain").on('click', function(evt) {
         clickPool();
     });
 
     $(window).resize(function() {
-        adjustMargins();
-        adjustOffsets();
-        showRemaining();
+        resize();
     });
 
     $("#deal").on('click', function() {
@@ -56,59 +69,87 @@ function init() {
         undo();
     });
 
-    $("#bkgdOptions input").change(function(evt) {
-        const idx = Number($(this).attr("value"));
-        selectBackground(idx);
-    });
-
     initOptions();
     adjustMargins();
+    showWins();
 }
 
-function selectBackground(idx) {
-    const bkgds = [
-        'images/background.gif',
-        'https://photos.smugmug.com/photos/i-FFrGCwk/1/X3/i-FFrGCwk-X3.jpg',
-        'https://photos.smugmug.com/photos/i-S7cwsn6/1/X3/i-S7cwsn6-X3.jpg',
-        'https://photos.smugmug.com/photos/i-GDzDxLm/1/X3/i-GDzDxLm-X3.jpg',
-        'https://photos.smugmug.com/photos/i-ZxLZzWD/0/X3/i-ZxLZzWD-X3.jpg'
-    ];
-    const bkgd = (idx >=0 && idx < bkgds.length) ? bkgds[idx] : 0;
-    const $body = $("body");
+function resize() {
+    adjustMargins();
+    adjustOffsets();
+    showBackground();
+    showRemaining();
+    $('#dlgOptions').dialog('close');    
+}
 
-    $body.css("background", "url(" + bkgd + ")");
-    $body.css("background-size", "100%");
+function getWins() {
+    let wins = localStorage.getItem(WINS_STORE);
+    return wins ? Number(wins) : 0;
+}
+
+function storeWins(wins) {
+    localStorage.setItem(WINS_STORE, wins);
+}
+
+function showWins() {
+    let wins = getWins();
+    $("#winsVal").text(wins);
+}
+
+function showBackground(i) {
+    const idx = (i || (i >= 0 && i < backgrounds.length)) ? i : currentBG;
+    const $body = $("body");
+    const bkgdSize = window.innerWidth + "px " + window.innerHeight + "px";
+
+    $body.css("background-image", "url(" + backgrounds[idx].image + ")");
+    $body.css("background-size", bkgdSize);
 }
 
 function showOptionsDialog() {
-    const $inputs = $('#bkgdOptions input');
-
-    $($inputs[currentBG]).prop("checked", true);
+    $('#bgSel option:eq(' + currentBG + ')').prop('selected', true)
     showDlgOptions(true);
-    $('#dlgOptions').dialog('open');    
+    $('#dlgOptions').dialog('open');
 }
 
 function initOptions() {
-    const $inputs = $('#bkgdOptions input');
+    const $dlg = $('#dlgOptions');
     const usrBG = Number(localStorage.getItem(BG_STORE));
 
-    currentBG = (usrBG >= 0 && usrBG < $inputs.length) ? usrBG : 0;
-    selectBackground(currentBG);
+    currentBG = (usrBG >= 0 && usrBG < backgrounds.length) ? usrBG : 0;
+    showBackground();
     showDlgOptions(false);
-    $($inputs[currentBG]).prop("checked", true);
 
-    $('#dlgOptions').dialog({
+    // Init background choices picklist
+    $div = $('<div id="bgDiv"></div>');
+    $lbl = $('<div id="bgLbl">Background:</div>');
+    $sel = $('<select id="bgSel">');
+    for (var i = 0; i < backgrounds.length; i++) {
+        let bg = backgrounds[i];
+        let $option = $('<option value="' + i + '">' + bg.name + '</option>');
+        $sel.append($option);
+        if (i == currentBG) {
+            $option.prop('selected', true);
+        }
+    }
+    $div.append($lbl);
+    $div.append($sel);
+    $dlg.append($div);
+    $sel.change(function() {
+        showBackground(Number($(this).val()));
+    });
+
+    $dlg.dialog({
         autoOpen: false, // Dialog won't open automatically on page load
         modal: true, // Enable modal behavior
         buttons: {
             Ok: function() {
-                currentBG = Number($("#bkgdOptions input:checked").val());
+                currentBG = Number($('#bgSel option:selected').val());
                 localStorage.setItem(BG_STORE, currentBG);
                 showDlgOptions(false);
                 $(this).dialog('close');
             },
             Cancel: function() {
-                selectBackground(currentBG);
+                showBackground();
                 showDlgOptions(false);
                 $(this).dialog('close');
             }
@@ -397,6 +438,18 @@ function clickPool() {
     }
 }
 
+function clickUnpool() {
+    const $last = $("#unpool :last-child");
+
+    if ($last.length > 0) {
+        clearDrag($last);
+        setCard($last, BACK);
+        $last.addClass('clickable');
+        $("#pool").append($last);
+        showRemaining();
+    }
+}
+
 // Make image draggable
 function setDraggable($img) {
     $img.draggable({
@@ -668,33 +721,13 @@ function undo() {
     checkButtons();
 }
 
-// The random number returned favors higher numbers
-function getRandomNumber(size) {
-    let retVal = 0;
-    let weights = [];
-
-    for (var i = 1; i <= size; i++) {
-        weights.push(i);
-    }
-
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    const randomValue = Math.random() * totalWeight;
-    let cumulativeWeight = 0;
-
-    for (let i = 0; i < weights.length; i++) {
-        cumulativeWeight += weights[i];
-        if (randomValue < cumulativeWeight) {
-            retVal = i;
-            break;
-        }
-    }
-
-    return retVal;
-}
-
 function finish() {
     let cards = [];
     const $imgs = $('[card]');
+    const wins = getWins() + 1;
+
+    storeWins(wins);             // Increase total user wins
+    showWins();
     showFinish(false);
 
     for (var i = 0; i < $imgs.length; i++) {
@@ -707,13 +740,36 @@ function finish() {
         }
     }
 
-    // Play a random audio clip
-    let idx = getRandomNumber(6);
+    playMp3();        // Play a random audio clip
+
+    animate(cards);   // Move/rotate cards to the suit stacks
+}
+
+// Select an mp3 that is not the same as the previous
+function playMp3() {
+    const MAX = 7;
+    const LAST_MP3_STORE = "lastMp3";
+    let indexes = [];
+
+    for (var i = 0; i < MAX; i++) {
+        indexes.push(i);
+    }
+
+    randomize(indexes);
+    randomize(indexes);
+
+    let last = localStorage.getItem(LAST_MP3_STORE);
+
+    if (!last || last < 0 || last >= MAX) {
+        last = 0;
+    }
+
+    const idx = (last == indexes[0]) ? indexes[1] : indexes[0];
+
+    localStorage.setItem(LAST_MP3_STORE, idx);
 
     var audio = new Audio('sounds/win' + idx + '.mp3');
     audio.play();
-
-    animate(cards);
 }
 
 function nextSuit() {
@@ -788,6 +844,7 @@ function animate(cards) {
                     $img.css('left', 'unset');
                     $img.css('z-index', 'unset');
                     showRemaining();
+                    adjustOffsets();
                     animate(cards);
                 }
             }

@@ -9,6 +9,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- drag/drop -->
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+    <script src="dataBackgrounds.js"></script>
     <script src="cards.js"></script>
     <script>
         $(function() {
@@ -25,7 +26,11 @@
         <button id="settings" title="User settings">&#x2699;</button>
         <button id="undo" title="Undo last move">Undo</button>
         <button id="finish" title="Complete game">Finish</button>
-        <div id="info">By Cliff Hewitt, 2023-Jun-4</div>
+        <div id="topRight">
+            <div id="winsLbl">Wins:</div>
+            <div id="winsVal"></div>
+            <div id="info">By Cliff Hewitt, 2023-Jun-5</div>
+        </div>
     </div>
     <div id="topRow">
         <div id="pool">
@@ -74,14 +79,6 @@
     </div>
     <div id="remain" class="clickable"></div>
     <div id="dlgOptions">
-        <div id="chooseBkgd">Choose background image</div>
-        <div id="bkgdOptions">
-            <div><input type="radio" name="option" value="0"><label>Default</label></div>
-            <div><input type="radio" name="option" value="1"><label>Clouds #1</label></div>
-            <div><input type="radio" name="option" value="2"><label>Clouds #2</label></div>
-            <div><input type="radio" name="option" value="3"><label>Clouds #3</label></div>
-            <div><input type="radio" name="option" value="4"><label>Space</label></div>
-        </div>
     </div>
 </body>
 
