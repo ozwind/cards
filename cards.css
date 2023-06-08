@@ -78,7 +78,7 @@ button:hover {
 }
 
 .holder {
-    opacity: 0.1;
+    opacity: 0.2;
 }
 
 .ui-draggable {
@@ -86,8 +86,9 @@ button:hover {
 }
 
 .dragHover {
-    border: 5px solid black;
+    border: 5px solid blue;
     margin-left: -5px;
+    margin-top: -5px;
     border-radius: 10px;
 }
 
