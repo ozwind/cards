@@ -12,6 +12,7 @@ let cards = [];
 let undos = [];
 var clickTimer;
 let origPos;
+let fins = {};  // Finish arguments
 
 // pool:   24
 // stacks: 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28
@@ -25,6 +26,7 @@ function init() {
 
     showUndo(false);
     showFinish(false);
+    showStop(false);
     showRemaining();
 
     $("#pool").on('click', function(evt) {
@@ -64,12 +66,25 @@ function init() {
         showOptionsDialog();
     });
 
-    $("#finish").on('click', function() {
+    $("#finish").on('click', function(event) {
+        event.stopPropagation();
         finish();
+    });
+
+    $("#stop").on('click', function() {
+        stopAnimation();
     });
 
     $("#undo").on('click', function() {
         undo();
+    });
+
+    $(document).on('click', function() {
+        stopAnimation();
+    });
+
+    $(document).on('keydown', function() {
+        stopAnimation();
     });
 
     initOptions();
@@ -657,6 +672,7 @@ function getCardType($img) {
 function deal() {
     showUndo(false);
     showFinish(false);
+    showStop(false);
     shuffle();
     showRemaining();
     undos = [];
@@ -759,6 +775,10 @@ function showFinish(show) {
     showElem('finish', show);
 }
 
+function showStop(show) {
+    showElem('stop', show);
+}
+
 function showDlgOptions(show) {
     showElem('dlgOptions', show)
 }
@@ -823,9 +843,24 @@ function finish() {
         }
     }
 
-    playMp3();        // Play a random audio clip
+    fins.mp3 = playMp3();        // Play a random audio clip
+    fins.cards = cards;
+    showStop(true);
 
     animate(cards);   // Move/rotate cards to the suit stacks
+}
+
+function stopAnimation() {
+    if (fins.mp3 && fins.cards) {
+        fins.mp3.pause();
+        fins.cards.splice(0, fins.cards.length);   // empty cards array
+        delete fins.mp3;
+    }
+    if (fins.$spiral) {
+        fins.$spiral.remove();
+    }
+
+    showStop(false);
 }
 
 // Select an mp3 that is not the same as the previous
@@ -851,8 +886,10 @@ function playMp3() {
 
     localStorage.setItem(LAST_MP3_STORE, idx);
 
-    var audio = new Audio('sounds/win' + idx + '.mp3');
+    const audio = new Audio('sounds/win' + idx + '.mp3');
     audio.play();
+
+    return audio;
 }
 
 function nextSuit() {
@@ -912,7 +949,7 @@ function animate(cards) {
         $img.animate(
             { deg:360, top: top, left: left },
             {
-                duration: 600,
+                duration: 300,
                 step: function(now, fx) {
                     if (fx.prop === 'deg') {
                         $img.css({ transform: 'rotate(' + now + 'deg)' });
@@ -933,5 +970,54 @@ function animate(cards) {
             }
         );
     }
+    else {
+        initSpiral();
+    }
 }
 
+function initSpiral() {
+    const $body = $("body");
+    fins.$spiral = $('<canvas id="spiral">');
+    const ctx = fins.$spiral[0].getContext("2d");
+    const width = window.innerWidth;
+    const height = window.innerHeight
+    const xPos = 0;
+    const yPos = 0;
+    const cWidth = 150;
+    const cHeight = cWidth * 1.528;
+    const idx = 0;
+    const sCards = ['KS','QH','JC','AD'];
+
+    $body.append(fins.$spiral);
+    fins.$spiral.attr('width', width);
+    fins.$spiral.attr('height', height);
+    ctx.translate(width / 2, height / 2);
+    let sObj = {ctx, xPos, yPos, cWidth, cHeight, idx, sCards};
+    spiral(sObj);
+}
+
+function spiral(sObj) {
+    let img = new Image;
+    img.onload = function() {
+        const direction = (sObj.idx % 2) == 0 ? 1 : -1;
+        sObj.ctx.drawImage(this, sObj.xPos++, sObj.yPos++, sObj.cWidth, sObj.cHeight);
+        sObj.ctx.rotate((direction * 5 * Math.PI) / 180);
+        if (sObj.xPos > window.innerWidth / 2 || sObj.yPos > window.innerHeight / 2) {
+            sObj.ctx.rotate(0);
+            sObj.xPos = 0;
+            sObj.yPos = 0;
+            sObj.idx++;
+        }
+        if (fins.mp3 && sObj.idx < sObj.sCards.length) {
+            setTimeout(function() {
+                spiral(sObj);
+            }, 5);
+        }
+        else {
+            showStop(false);
+            fins.$spiral.remove();
+        }
+    };
+
+    img.src = 'images/' + sObj.sCards[sObj.idx] + '.jpg';  // triggers img.onload
+}
