@@ -12,6 +12,7 @@ let cards = [];
 let undos = [];
 var clickTimer;
 let origPos;
+let isUndoClicked = false;
 let fins = {};  // Finish arguments
 
 // pool:   24
@@ -300,6 +301,7 @@ function adjustOffset($ic) {
     for (var j = 1; j < $images.length; j++) {
         let $img = $($images[j]);
         $img.css('top', top + 'px');
+        $img.removeClass('dragHover');  // in case drag/drop does not remove
         top += offset;
     }
 
@@ -377,10 +379,10 @@ function setCard($sel, card, initEvent) {  // Sets card image
 
 function doubleClick(self) {
     let $this = $(self);
+    let $moveTo = undefined;
 
     if (!showingBack(self) && $this.closest('#multiDrag').length < 1) {
         let card = getCardType($this);
-        let $moveTo = undefined;
 
         for (var i = 0; i < 4; i++) {
             const $stack = $("#stack" + i);
@@ -398,11 +400,12 @@ function doubleClick(self) {
                 break;
             }
         }
+    }
 
-        if ($moveTo) {
-            dropProcess($this, $moveTo);
-            checkButtons();
-        }
+    if ($moveTo) {
+        dropProcess($this, $moveTo);
+        checkButtons();
+        $this.css('top', '0px');
     }
 }
 
@@ -433,7 +436,6 @@ function mouseover(self) {
             let top = 0;
             for (var i = 0; i < $all.length; i++) {
                 $img = $($all[i]);
-                //let top = getTop($img) - dTop;
                 top += offset;
                 $img.css('top', top + 'px');
                 clearDrag($img);
@@ -563,7 +565,12 @@ function setDraggable($img) {
             if (!dropped) {
                 $(this).animate({ top: origPos.top, left: origPos.left }, 200)
                     .promise().done(function() {
-                        $(this).css("z-index", "auto");
+                        const $this = $(this);
+                        const id = $this.parent()[0].id;
+                        $this.css("z-index", "auto");
+                        if (id && id.startsWith('stack')) {
+                            $this.css("top", 0);
+                        }
                 });
             }
         }
@@ -597,11 +604,13 @@ function setDroppables($img) {
 
             if (allowDrop) {
                 clearDrop($stack);
-                $stack.droppable({
+                let $last = $stack.find(":last");
+                $last.droppable({
+                    hoverClass: 'dragHover',
                     drop: function(event, ui) {
                         dropTop(event, ui)
                     }
-                });            
+                });
             }
             else {
                 destroyDragDrop($stack);
@@ -738,14 +747,18 @@ function dropProcess($src, $dest) {
     }    
     undos.push({cards, prevBack, src: $src.parent()});
 
+    if ($dest[0].id && $dest[0].id.startsWith('stack')) {
+        $src.css('top', '0');
+    }
+
     $dest.append($src);                 // move ui.draggable to destination imgContainer
     checkButtons();                     // determine visible state of buttons
 }
 
 function dropTop(event, ui) {
-    const $target = $(event.target);    // $target is one of the 4 stacks
-    dropProcess(ui.draggable, $target); // ui.draggable is source img
-    $target.css('top', '0px');
+    const $target = $(event.target);    // $target is destination img
+    const $parent = $target.parent();   // $parent is the destination imgContainer
+    dropProcess(ui.draggable, $parent); // ui.draggable is source img
 }
 
 function dropBot(event, ui) {
@@ -804,9 +817,18 @@ function showingBack(elem) {
 }
 
 function undo() {
+    if (isUndoClicked) {
+        return;  // prevent Undo button from being clicked quickly
+    }
+
+    isUndoClicked = true;
+
+    const $undo = $('#undo');
     let entry = undos.pop();
     let cards = entry.cards;
     let $src = entry.src;
+
+    $undo.addClass('disabled');
 
     if (entry.prevBack) {
         let $last = $src.find(":last");
@@ -822,6 +844,11 @@ function undo() {
 
     adjustOffsets();
     checkButtons();
+
+    setTimeout(function() {
+        isUndoClicked = false;
+        $undo.removeClass('disabled');
+    }, 500);
 }
 
 function finish() {

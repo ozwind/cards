@@ -71,6 +71,10 @@ button:hover {
     background-color: #3e8e41;
 }
 
+.disabled, .disabled:hover {
+    background-color: gray;
+}
+
 .spacer {
     visibility: hidden;
     position: relative;
