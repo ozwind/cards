@@ -5,9 +5,11 @@ const BG_STORE = "userBG";
 const DECK_STORE = "userDeck";
 const WINS_STORE = "userWins";
 const MARGIN_STORE = "userMargin";
+const AUDIO_STORE = "userAudio";
 let currentDeck = 0;
 let currentBG = 0;
 let currentMargin = 0;
+let currentAudio = 0;
 let cards = [];
 let undos = [];
 var clickTimer;
@@ -25,6 +27,7 @@ function init() {
         }
     }
 
+    showSave(false);
     showUndo(false);
     showFinish(false);
     showStop(false);
@@ -56,7 +59,16 @@ function init() {
     });
 
     $("#deal").on('click', function() {
+        randomize(cards);
         deal();
+    });
+
+    $("#save").on('click', function() {
+        save();
+    });
+
+    $("#load").on('click', function() {
+        loadFile();
     });
 
     $("#reset").on('click', function() {
@@ -91,6 +103,71 @@ function init() {
     initOptions();
     adjustMargins();
     showWins();
+}
+
+function getCurrentDateTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
+}
+
+function save() {
+    saveCards().then(() => {
+        console.log('File saved successfully!');
+    }).catch((error) => {
+        console.log(error.stack);
+    });
+}
+
+async function saveCards() {
+    const filename = getCurrentDateTime() + ".json";
+    const handle = await showSaveFilePicker({
+        suggestedName: filename,
+        types: [{
+            description: 'JSON file',
+            accept: {'text/plain': ['.json']},
+        }],
+    });
+
+    const json = JSON.stringify(cards);
+    const blob = new Blob([json]);
+
+    const writableStream = await handle.createWritable();
+    await writableStream.write(blob);
+    await writableStream.close();
+}
+
+function loadFile() {
+    var input = $('<input>').attr('type', 'file');  // Create an input element of type "file"
+
+    input.on('change', function (event) { // Listen for the "change" event on the input element
+        var file = event.target.files[0]; // Get the selected file
+        var reader = new FileReader();
+        var filename = file.name;
+
+        reader.onload = function (e) {
+            var fileText = e.target.result;
+            try {
+                cards = JSON.parse(fileText);
+                deal();
+                showSave(false);
+                document.title = filename;
+            }
+            catch (error) {
+                alert(error);
+            }
+        };
+
+        reader.readAsText(file);
+    });
+
+    input.trigger('click'); // Trigger a click event on the input element
 }
 
 function resize() {
@@ -141,6 +218,7 @@ function showOptionsDialog() {
     $('#bgSel option:eq(' + currentBG + ')').prop('selected', true)
     $('#deckSel option:eq(' + currentDeck + ')').prop('selected', true)
     $('#marginSel option:eq(' + currentMargin + ')').prop('selected', true)
+    $('#audioSel option:eq(' + currentAudio + ')').prop('selected', true)
     showDlgOptions(true);
     $('#dlgOptions').dialog('open');
 }
@@ -150,6 +228,7 @@ function initOptions() {
     const usrBG = Number(localStorage.getItem(BG_STORE));
     const usrDeck = Number(localStorage.getItem(DECK_STORE));
     const usrMargin = Number(localStorage.getItem(MARGIN_STORE));
+    const usrAudio = Number(localStorage.getItem(AUDIO_STORE));
     var $div;
     var $lbl;
     var $sel;
@@ -157,6 +236,7 @@ function initOptions() {
     currentBG = (usrBG >= 0 && usrBG < backgrounds.length) ? usrBG : 0;
     currentDeck = (usrDeck >= 0 && usrDeck < decks.length) ? usrDeck : 0;
     currentMargin = (usrMargin >= 0 && usrMargin < margins.length) ? usrMargin : 0;
+    currentAudio = (usrAudio >= 0 && usrAudio < 2) ? usrAudio : 0;
     showBackground();
     showDlgOptions(false);
 
@@ -196,7 +276,7 @@ function initOptions() {
     $dlg.append($div);
     $sel.change(function() {
         showDeck(Number($(this).val()));
-    });    
+    });
 
     // Init margin choices
     $div = $('<div class="dlgRow"></div>');
@@ -218,6 +298,24 @@ function initOptions() {
         $dlg.dialog("option", "position", { my: "center", at: "center", of: window });
     });
 
+    // Init audio choices
+    $div = $('<div class="dlgRow"></div>');
+    $lbl = $('<div>Audio:</div>');
+    $sel = $('<select id="audioSel">');
+    let $opt = $('<option value="0">Enable</option>');
+    if (currentAudio == 0) {
+        $opt.prop('selected', true);
+    }
+    $sel.append($opt);
+    $opt = $('<option value="1">Disable</option>');
+    if (currentAudio == 1) {
+        $opt.prop('selected', true);
+    }
+    $sel.append($opt);
+    $div.append($lbl);
+    $div.append($sel);
+    $dlg.append($div);
+
     $dlg.dialog({
         autoOpen: false, // Dialog won't open automatically on page load
         modal: true, // Enable modal behavior
@@ -229,6 +327,8 @@ function initOptions() {
                 localStorage.setItem(DECK_STORE, currentDeck);
                 currentMargin = Number($('#marginSel option:selected').val());
                 localStorage.setItem(MARGIN_STORE, currentMargin);
+                currentAudio = Number($('#audioSel option:selected').val());
+                localStorage.setItem(AUDIO_STORE, currentAudio);
                 showDlgOptions(false);
                 $(this).dialog('close');
             },
@@ -481,9 +581,7 @@ function randomize(array) {
     }    
 }
 
-function shuffle() {
-    randomize(cards);
-
+function placeCards() {
     let index = resetPool();
 
     let $bots = $('#botRow .imgContainer');
@@ -679,10 +777,12 @@ function getCardType($img) {
 }
 
 function deal() {
+    document.title = "Cards";
+    showSave(true);
     showUndo(false);
     showFinish(false);
     showStop(false);
-    shuffle();
+    placeCards();
     showRemaining();
     undos = [];
 
@@ -778,6 +878,10 @@ function showElem(id, show) {
     else {
         $button.addClass('hidden');
     }
+}
+
+function showSave(show) {
+    showElem('save', show);
 }
 
 function showUndo(show) {
@@ -914,7 +1018,9 @@ function playMp3() {
     localStorage.setItem(LAST_MP3_STORE, idx);
 
     const audio = new Audio('sounds/win' + idx + '.mp3');
-    audio.play();
+    if (currentAudio == 0) {  // audio enabled
+        audio.play();
+    }
 
     return audio;
 }
