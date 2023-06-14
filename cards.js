@@ -7,7 +7,7 @@ const WINS_STORE = "userWins";
 const MARGIN_STORE = "userMargin";
 const AUDIO_STORE = "userAudio";
 let currentDeck = 0;
-let currentBG = 0;
+let currentBG = 'Default';
 let currentMargin = 0;
 let currentAudio = 0;
 let cards = [];
@@ -192,12 +192,13 @@ function showWins() {
     $("#winsVal").text(wins);
 }
 
-function showBackground(index) {
-    const idx = (index || (index >= 0 && index < backgrounds.length)) ? index : currentBG;
+function showBackground(name) {
+    const bg = name ? name : currentBG;
+    const bgKey = bgMap.get(bg) ? bg : 'Default';
     const $body = $("body");
     const bkgdSize = window.innerWidth + "px " + window.innerHeight + "px";
 
-    $body.css("background-image", "url(" + backgrounds[idx].image + ")");
+    $body.css("background-image", "url(" + bgMap.get(bgKey) + ")");
     $body.css("background-size", bkgdSize);
 }
 
@@ -215,17 +216,17 @@ function showDeck(index) {
 }
 
 function showOptionsDialog() {
-    $('#bgSel option:eq(' + currentBG + ')').prop('selected', true)
-    $('#deckSel option:eq(' + currentDeck + ')').prop('selected', true)
-    $('#marginSel option:eq(' + currentMargin + ')').prop('selected', true)
-    $('#audioSel option:eq(' + currentAudio + ')').prop('selected', true)
+    $('#bgSel').val(currentBG);
+    $('#deckSel').val(currentDeck);
+    $('#marginSel').val(currentMargin);
+    $('#audioSel').val(currentAudio);
     showDlgOptions(true);
     $('#dlgOptions').dialog('open');
 }
 
 function initOptions() {
     const $dlg = $('#dlgOptions');
-    const usrBG = Number(localStorage.getItem(BG_STORE));
+    const usrBG = localStorage.getItem(BG_STORE);
     const usrDeck = Number(localStorage.getItem(DECK_STORE));
     const usrMargin = Number(localStorage.getItem(MARGIN_STORE));
     const usrAudio = Number(localStorage.getItem(AUDIO_STORE));
@@ -233,7 +234,7 @@ function initOptions() {
     var $lbl;
     var $sel;
 
-    currentBG = (usrBG >= 0 && usrBG < backgrounds.length) ? usrBG : 0;
+    currentBG = bgMap.get(usrBG) ? usrBG : 'Default';
     currentDeck = (usrDeck >= 0 && usrDeck < decks.length) ? usrDeck : 0;
     currentMargin = (usrMargin >= 0 && usrMargin < margins.length) ? usrMargin : 0;
     currentAudio = (usrAudio >= 0 && usrAudio < 2) ? usrAudio : 0;
@@ -246,17 +247,15 @@ function initOptions() {
     $sel = $('<select id="bgSel">');
     for (var i = 0; i < backgrounds.length; i++) {
         let bg = backgrounds[i];
-        let $option = $('<option value="' + i + '">' + bg.name + '</option>');
+        let $option = $('<option value="' + bg.name + '">' + bg.name + '</option>');
         $sel.append($option);
-        if (i == currentBG) {
-            $option.prop('selected', true);
-        }
     }
+    $sel.val(currentBG);
     $div.append($lbl);
     $div.append($sel);
     $dlg.append($div);
     $sel.change(function() {
-        showBackground(Number($(this).val()));
+        showBackground($(this).val());
     });
 
     // Init deck choices
@@ -267,10 +266,8 @@ function initOptions() {
         let deck = decks[i];
         let $option = $('<option value="' + i + '">' + deck.name + '</option>');
         $sel.append($option);
-        if (i == currentDeck) {
-            $option.prop('selected', true);
-        }
     }
+    $sel.val(currentDeck);
     $div.append($lbl);
     $div.append($sel);
     $dlg.append($div);
@@ -286,10 +283,8 @@ function initOptions() {
         let margin = margins[i];
         let $option = $('<option value="' + i + '">' + margin + '</option>');
         $sel.append($option);
-        if (i == currentMargin) {
-            $option.prop('selected', true);
-        }
     }
+    $sel.val(currentMargin);
     $div.append($lbl);
     $div.append($sel);
     $dlg.append($div);
@@ -303,15 +298,10 @@ function initOptions() {
     $lbl = $('<div>Audio:</div>');
     $sel = $('<select id="audioSel">');
     let $opt = $('<option value="0">Enable</option>');
-    if (currentAudio == 0) {
-        $opt.prop('selected', true);
-    }
     $sel.append($opt);
     $opt = $('<option value="1">Disable</option>');
-    if (currentAudio == 1) {
-        $opt.prop('selected', true);
-    }
     $sel.append($opt);
+    $sel.val(currentAudio);
     $div.append($lbl);
     $div.append($sel);
     $dlg.append($div);
@@ -321,13 +311,13 @@ function initOptions() {
         modal: true, // Enable modal behavior
         buttons: {
             Ok: function() {
-                currentBG = Number($('#bgSel option:selected').val());
+                currentBG = $('#bgSel').val();
                 localStorage.setItem(BG_STORE, currentBG);
-                currentDeck = Number($('#deckSel option:selected').val());
+                currentDeck = Number($('#deckSel').val());
                 localStorage.setItem(DECK_STORE, currentDeck);
-                currentMargin = Number($('#marginSel option:selected').val());
+                currentMargin = Number($('#marginSel').val());
                 localStorage.setItem(MARGIN_STORE, currentMargin);
-                currentAudio = Number($('#audioSel option:selected').val());
+                currentAudio = Number($('#audioSel').val());
                 localStorage.setItem(AUDIO_STORE, currentAudio);
                 showDlgOptions(false);
                 $(this).dialog('close');
